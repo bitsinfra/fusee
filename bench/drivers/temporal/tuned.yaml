@@ -1,0 +1,10 @@
+# The dynamic configuration of Windmill's published Temporal comparison, at 17c96e8f0940970d84dd4244989053e5262c2fcc.
+limit.maxIDLength:
+  - value: 255
+    constraints: {}
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true
+    constraints: {}
+history.transferProcessorMaxPollRPS:
+  - value: 1000
+    constraints: {}

@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "fusee.name" . }}
+  labels: {{- include "fusee.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "fusee.name" . }}-members
+  replicas: {{ .Values.members }}
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels: {{- include "fusee.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "fusee.labels" . | nindent 8 }}
+      {{- if .Values.metricsAnnotations }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.ports.http | quote }}
+        prometheus.io/path: /metrics
+      {{- end }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: fusee
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - >-
+              exec fusee server --dir /data
+              --listen 0.0.0.0:{{ .Values.ports.protocol }}
+              --http 0.0.0.0:{{ .Values.ports.http }}
+              --token-file /etc/fusee/token
+              {{- if gt (int .Values.shards) 0 }} --shards {{ .Values.shards }}{{ end }}
+              {{- if gt (int .Values.members) 1 }}
+              --replicas {{ include "fusee.replicas" . }}
+              --replica-id ${HOSTNAME##*-}
+              --replica-token-file /etc/fusee/token
+              {{- end }}
+          ports:
+            - { name: protocol, containerPort: {{ .Values.ports.protocol }} }
+            - { name: http, containerPort: {{ .Values.ports.http }} }
+            - { name: replication, containerPort: {{ .Values.ports.replication }} }
+          readinessProbe:
+            tcpSocket: { port: protocol }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: token, mountPath: /etc/fusee, readOnly: true }
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: token
+          secret:
+            secretName: {{ include "fusee.name" . }}-token
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.storage.className }}
+        storageClassName: {{ .Values.storage.className }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.storage.size }}

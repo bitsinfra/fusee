@@ -1,0 +1,279 @@
+name: release
+# Publishes on signed version tags (v1.0.0, ...) through trusted
+# publishing on crates.io, npm and PyPI: no long-lived tokens. The first
+# crates.io version of each crate must be published once by hand before
+# trusted publishing can be configured for it.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+jobs:
+  verify-tag:
+    # Manual runs build downloadable packages. Tag runs require the owner's release switch.
+    if: github.event_name == 'workflow_dispatch' || vars.FUSEE_PUBLIC_RELEASE_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Verify the tag against the configured release signers
+        if: github.event_name == 'push'
+        env:
+          FUSEE_RELEASE_SIGNING_KEYS: ${{ vars.FUSEE_RELEASE_SIGNING_KEYS }}
+          FUSEE_RELEASE_SSH_SIGNERS: ${{ vars.FUSEE_RELEASE_SSH_SIGNERS }}
+        run: bash scripts/verify-release-tag.sh "$GITHUB_REF_NAME"
+  native:
+    needs: verify-tag
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-24.04, target: x86_64-unknown-linux-gnu, npm: linux-x64-gnu }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, npm: linux-arm64-gnu }
+          - { os: ubuntu-24.04, target: x86_64-unknown-linux-musl, npm: linux-x64-musl }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl, npm: linux-arm64-musl }
+          - { os: macos-15, target: aarch64-apple-darwin, npm: darwin-arm64 }
+          - { os: macos-15-intel, target: x86_64-apple-darwin, npm: darwin-x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        if: "!contains(matrix.target, 'musl')"
+        with:
+          targets: ${{ matrix.target }}
+      - name: Build native library and server
+        if: "!contains(matrix.target, 'musl')"
+        run: cargo build --locked --release --target ${{ matrix.target }} -p fusee-cli -p fusee-node
+      - name: Build the static CLI and shared Node addon on musl
+        if: contains(matrix.target, 'musl')
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          docker run --rm -e TARGET -v "$PWD:/src" -w /src rust:1.95-alpine3.23 sh -ec '
+            cargo build --locked --release --target "$TARGET" -p fusee-cli
+            RUSTFLAGS="-C target-feature=-crt-static" cargo build --locked --release --target "$TARGET" -p fusee-node
+          '
+      - name: Package the Node.js binary (napi-rs layout)
+        run: |
+          mkdir -p npm/${{ matrix.npm }}
+          ext=so
+          if [[ "$RUNNER_OS" == macOS ]]; then ext=dylib; fi
+          cp "target/${{ matrix.target }}/release/libfusee_node.$ext" npm/${{ matrix.npm }}/fusee.${{ matrix.npm }}.node
+      - uses: actions/upload-artifact@v5
+        with:
+          name: native-${{ matrix.npm }}
+          path: |
+            npm/${{ matrix.npm }}/fusee.${{ matrix.npm }}.node
+            target/${{ matrix.target }}/release/fusee
+  wheels:
+    needs: npm-packages
+    strategy:
+      matrix:
+        # cli: the fusee binary the wheel carries (`uvx fusee dev`); on Linux
+        # the static musl build, which runs on any glibc.
+        include:
+          - { os: ubuntu-24.04, manylinux: "2_28", target: x86_64, cli: linux-x64-musl, npm: linux-x64-gnu }
+          - { os: ubuntu-24.04-arm, manylinux: "2_28", target: aarch64, cli: linux-arm64-musl, npm: linux-arm64-gnu }
+          - { os: ubuntu-24.04, manylinux: musllinux_1_2, target: x86_64, cli: linux-x64-musl, npm: linux-x64-musl }
+          - { os: ubuntu-24.04-arm, manylinux: musllinux_1_2, target: aarch64, cli: linux-arm64-musl, npm: linux-arm64-musl }
+          - { os: macos-15, target: aarch64, cli: darwin-arm64, npm: darwin-arm64 }
+          - { os: macos-15-intel, target: x86_64, cli: darwin-x64, npm: darwin-x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v6
+        with:
+          name: native-${{ matrix.cli }}
+          path: cli
+      - name: The CLI goes in the wheel (fusee/bin/fusee)
+        run: |
+          mkdir -p bindings/python/python/fusee/bin
+          cp cli/target/*/release/fusee bindings/python/python/fusee/bin/fusee
+          chmod 755 bindings/python/python/fusee/bin/fusee
+      - uses: PyO3/maturin-action@v1
+        with:
+          working-directory: bindings/python
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          args: --release --locked --out dist
+      - uses: actions/download-artifact@v6
+        with:
+          name: npm
+          path: packages
+      - uses: actions/setup-node@v5
+        if: "!contains(matrix.npm, 'musl')"
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v6
+        if: "!contains(matrix.npm, 'musl')"
+        with:
+          python-version: "3.13"
+      - name: Install the packages and run a workflow in each SDK
+        env:
+          PLATFORM: ${{ matrix.npm }}
+        run: |
+          if [[ "$PLATFORM" == *-musl ]]; then
+            docker run --rm -e PLATFORM -v "$PWD:/src:ro" -w /src node:24-alpine3.23 sh -ec '
+              apk add --no-cache bash python3 py3-pip
+              bash scripts/test-release-packages.sh "$PLATFORM" packages bindings/python/dist
+            '
+          else
+            bash scripts/test-release-packages.sh "$PLATFORM" packages bindings/python/dist
+          fi
+      - uses: actions/upload-artifact@v5
+        with:
+          name: wheel-${{ matrix.os }}-${{ matrix.target }}-${{ strategy.job-index }}
+          path: bindings/python/dist/*.whl
+  publish-crates:
+    if: github.event_name == 'push'
+    needs: [native, wheels, crates]
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    environment: crates.io
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+      - name: Publish in dependency order
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          for c in fusee-core fusee fusee-server fusee-sim fusee-cli; do
+            cargo publish -p "$c"
+            sleep 20
+          done
+  crates:
+    needs: verify-tag
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo package --locked -p fusee-core -p fusee -p fusee-server -p fusee-sim -p fusee-cli
+      - uses: actions/upload-artifact@v5
+        with:
+          name: crates
+          path: target/package/*.crate
+          if-no-files-found: error
+  npm-packages:
+    needs: [native]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: native-*
+          path: artifacts
+      - name: Pack platform tarballs and the SDK
+        working-directory: bindings/node
+        run: |
+          npm ci --omit=optional
+          npx tsc -p tsconfig.json
+          mkdir -p packages
+          for d in ../../artifacts/native-*; do
+            p=${d##*/native-}
+            # The CLI each package carries (`npx fusee dev`): on Linux the
+            # static musl build, which runs on any glibc.
+            c=${p/-gnu/-musl}
+            cli=$(ls ../../artifacts/native-$c/target/*/release/fusee)
+            node scripts/package-platform.mjs "$p" "$d/npm/$p/fusee.$p.node" "npm/$p" "$cli"
+            npm pack "./npm/$p" --pack-destination packages
+          done
+          npm pack --pack-destination packages
+      - uses: actions/upload-artifact@v5
+        with:
+          name: npm
+          path: bindings/node/packages/*.tgz
+          if-no-files-found: error
+  publish-npm:
+    if: github.event_name == 'push'
+    needs: [npm-packages, wheels]
+    runs-on: ubuntu-24.04
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@v6
+        with:
+          name: npm
+          path: packages
+      - name: Publish the tested tarballs
+        run: |
+          for tarball in packages/fusee-{darwin,linux}-*.tgz; do
+            npm publish --provenance --access public "$tarball"
+          done
+          npm publish --provenance --access public packages/fusee-[0-9]*.tgz
+  publish-pypi:
+    if: github.event_name == 'push'
+    permissions:
+      id-token: write
+    needs: [wheels]
+    runs-on: ubuntu-24.04
+    environment: pypi
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: wheel-*
+          merge-multiple: true
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+  github-release:
+    if: github.event_name == 'push'
+    needs: [publish-crates, publish-npm, publish-pypi, image]
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: native-*
+          path: artifacts
+      - name: Server binaries on GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir out
+          for d in artifacts/native-*; do p=${d##*/native-}; cp $d/target/*/release/fusee out/fusee-$p; done
+          # A Homebrew formula over these binaries, for a tap.
+          python3 scripts/homebrew-formula.py "${GITHUB_REF_NAME#v}" out > out/fusee.rb
+          gh release create "$GITHUB_REF_NAME" out/* --verify-tag --notes-file CHANGELOG.md
+  image:
+    if: github.event_name == 'push'
+    needs: [verify-tag]
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v5
+      - id: image
+        name: Resolve the Helm image name and version
+        run: echo "tag=ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.image.outputs.tag }}

@@ -1,0 +1,4 @@
+package obelisk:log@1.0.0;
+interface log {
+    info: func(message: string);
+}

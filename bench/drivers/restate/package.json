@@ -1,0 +1,1 @@
+{ "type": "module", "private": true, "dependencies": { "@restatedev/restate-sdk": "1.9.0" } }

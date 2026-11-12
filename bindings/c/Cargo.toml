@@ -1,0 +1,24 @@
+[package]
+name = "fusee-c"
+description = "C interface to Fusee for SDKs in other languages (Go, Java)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "fusee_c"
+crate-type = ["cdylib", "staticlib"]
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+fusee.workspace = true
+fusee-server.workspace = true
+fusee-core.workspace = true
+serde_json.workspace = true
+libc.workspace = true

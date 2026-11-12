@@ -1,0 +1,103 @@
+# Waiting for people
+
+A refund over a limit needs a manager. An expense needs finance. A
+contract waits for a signature. The run asks, waits (minutes or weeks, at
+no cost while it waits), and continues when the answer comes.
+
+## A signal and a timeout
+
+<Tabs groupId="sdk" persist items={["TypeScript", "Python", "Rust"]}>
+
+<Tab value="TypeScript">
+
+```ts
+const decision = signal("decision");
+
+const expense = workflow("expense", async (ctx, claim) => {
+  await ctx.step("ask", () => mail.send(finance, approvalLink(ctx.workflowId)));
+  const answer = await ctx.waitFor(decision, { timeout: "3d" });
+  if (answer === undefined) return "expired";
+  if (!answer.approved) return `rejected by ${answer.by}`;
+  return ctx.step("pay", (s) => payments.reimburse(claim, s.key));
+});
+
+// The approval page's handler, any process, any time later:
+await engine.run("expense-7").signal(decision, { approved: true, by: "dana" });
+```
+
+</Tab>
+
+<Tab value="Python">
+
+```python
+decision = fusee.signal("decision", dict)
+
+@fusee.workflow("expense")
+async def expense(ctx, claim):
+    await ctx.step("ask", lambda: mail.send(finance, approval_link(ctx.workflow_id)))
+    answer = await ctx.wait_for(decision, timeout="3d")
+    if answer is None:
+        return "expired"
+    if not answer["approved"]:
+        return f"rejected by {answer['by']}"
+    return await ctx.step("pay", lambda s: payments.reimburse(claim, s.key))
+```
+
+</Tab>
+
+<Tab value="Rust">
+
+```rust
+const DECISION: Signal<Decision> = Signal::new("decision");
+
+let answer = ctx
+    .wait_for(DECISION)
+    .timeout(Duration::from_secs(3 * 86_400))
+    .await?;
+let Some(answer) = answer else {
+    return Ok("expired: nobody answered in three days".into());
+};
+```
+
+See the [complete approval workflow](../../crates/fusee/examples/human_approval.rs) for the request, the decision type, and the caller that sends the signal.
+
+</Tab>
+
+</Tabs>
+
+While it waits, the run is parked: nothing of it is in memory, and a
+restart or a deploy changes nothing. A signal that arrives before the
+code reaches `waitFor` is kept and taken when it gets there. `fusee runs
+signal expense-7 decision '{"approved": true, "by": "dana"}'` and the UI's
+Signal button send the same signal, and both record who sent it
+([audit](../features.md#audit)).
+
+## A link that completes a step
+
+When the answer comes from a system that only knows how to call a URL (an
+e-signature service, a payment page), wait on a completion instead:
+
+```ts
+const signed = await ctx.awaitCompletion("signature", (cb) => esign.send(contract, { webhook: cb.url }));
+```
+
+`cb.url` completes that step when something `POST`s the value to it
+(`…/v1/fail/<token>` fails it). The URL is unguessable, names the run,
+step and attempt, and stops working once used.
+
+## Showing where a run is
+
+A query answers from the run's state without changing it:
+
+```ts
+ctx.onQuery("status", () => (answered ? "decided" : "waiting for finance"));
+const status = await engine.run("expense-7").query("status");
+```
+
+Reminders are a sleep in a loop with the wait: `ctx.sleep("remind-1",
+"1d")` raced against the signal with `ctx.race`. Escalation is a second
+wait with a new approver. Each is a few lines of ordinary code, recorded
+step by step.
+
+The [human approval example](../../examples/README.md) runs in five
+languages.

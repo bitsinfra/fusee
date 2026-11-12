@@ -1,0 +1,35 @@
+[package]
+name = "fusee-python"
+description = "Python bindings for Fusee (PyO3)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+path = "native/lib.rs"
+
+[lints]
+workspace = true
+
+[features]
+default = ["abi3"]
+# One module for every CPython from 3.9 on (the stable ABI). Without it the
+# build is for the interpreter it finds (`--no-default-features`).
+abi3 = ["pyo3/abi3-py39"]
+
+[dependencies]
+# `testing`: the test kit's virtual clock and journal import (memory engines only).
+fusee = { workspace = true, features = ["testing"] }
+fusee-server.workspace = true
+fusee-core.workspace = true
+libc.workspace = true
+serde_json.workspace = true
+pyo3 = { version = "0.30", features = ["extension-module"] }
+
+[build-dependencies]
+pyo3-build-config = "0.30"

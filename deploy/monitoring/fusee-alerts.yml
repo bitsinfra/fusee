@@ -1,0 +1,103 @@
+# Prometheus alert rules for Fusee. Scrape GET /metrics of each engine or
+# server (`fusee server --http`, `engine.serve()`, `Config::http`); every
+# series carries a `shard` label.
+#
+#   rule_files: [fusee-alerts.yml]
+#
+# Each alert says what to do; docs/errors.md has the long form.
+groups:
+  - name: fusee
+    rules:
+      - alert: FuseeRunsStuck
+        # A stuck run's code no longer matches its journal; it waits for
+        # someone and never fails by itself.
+        expr: sum by (instance) (fusee_runs_stuck) > 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "{{ $value }} Fusee run(s) stuck on {{ $labels.instance }}"
+          description: >-
+            Their code no longer matches their journals. Deploy code that matches,
+            guard the change with patched(), or reset each run to before the step
+            that differs (`fusee runs ls --status stuck`, then `fusee runs reset`).
+            https://github.com/bitsinfra/fusee/blob/main/docs/errors.md#determinism
+
+      - alert: FuseeRunsPaused
+        # A step ran out of retries and its run waits for a resume.
+        expr: sum by (instance) (fusee_runs_paused) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} Fusee run(s) paused on {{ $labels.instance }}"
+          description: >-
+            A step of each ran out of retries and the run waits, with its callers,
+            instead of failing. Fix the cause, then resume them
+            (`fusee runs ls --status paused`, then `fusee runs resume` or
+            `fusee runs bulk resume --status paused`).
+            https://github.com/bitsinfra/fusee/blob/main/docs/features.md#pausing-when-retries-run-out
+
+      - alert: FuseeRunsWaitingForCode
+        # Runs of a type or version no running process registers.
+        expr: sum by (instance) (fusee_runs_waiting_for_code) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} Fusee run(s) waiting for code on {{ $labels.instance }}"
+          description: >-
+            No process registers their workflow type and version. Deploy a worker
+            that does, or keep the old version's code until `fusee versions` shows
+            no live runs of it.
+
+      - alert: FuseeDeterminismErrors
+        expr: sum by (instance) (increase(fusee_determinism_errors[10m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fusee runs hit determinism errors on {{ $labels.instance }}"
+          description: >-
+            Code changed under running workflows. See FuseeRunsStuck for the runs
+            this left waiting.
+
+      - alert: FuseeSlowFlushes
+        # Mean time to make a batch durable, over 10 ms for ten minutes: the
+        # disk is slower than the workload needs, or shared with another.
+        expr: >-
+          sum by (instance) (rate(fusee_flush_us_total[5m]))
+            / sum by (instance) (rate(fusee_flushes[5m])) > 10000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fusee flushes average {{ $value | humanize }} µs on {{ $labels.instance }}"
+          description: >-
+            Every step waits for a flush. Check the data directory's device
+            (`fusee doctor <dir>`), move it to a dedicated NVMe drive, or add shards.
+
+      - alert: FuseeBusy
+        # Starts refused because a shard holds its most loaded runs.
+        expr: sum by (instance) (rate(fusee_busy[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fusee is refusing starts as busy on {{ $labels.instance }}"
+          description: >-
+            Callers get Busy (retryable) because shards hold their most loaded
+            runs. Callers should back off; if it lasts, add shards or let waiting
+            runs park sooner (park_after).
+
+      - alert: FuseeStalls
+        # Ticks and flushes over the stall threshold (counted while stall
+        # tracing is on).
+        expr: sum by (instance) (increase(fusee_stalls[10m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fusee shard ticks or flushes stalled on {{ $labels.instance }}"
+          description: >-
+            A shard's tick or a flush took longer than the stall threshold:
+            blocking code in a step, a slow disk, or an overloaded host. Steps
+            that block should run off the shard thread.

@@ -1,0 +1,64 @@
+# Get started with Fusee
+
+Fusee is a library for workflows that need to survive a restart. Write a function in your language, wrap work in named steps, and let Fusee record their results. When the process restarts, the workflow can reuse a recorded result and continue from there.
+
+## Your first workflow
+
+[Install the SDK and CLI](installation.md), then follow the quickstart for your language. You'll build a workflow that greets someone, waits for approval, and resumes after you kill the process.
+
+<Tabs groupId="sdk" persist items={["TypeScript", "Python", "Rust"]}>
+
+<Tab value="TypeScript">
+
+```ts
+import { workflow } from "fusee";
+
+export const greet = workflow("greet", async (ctx, name: string) => {
+  return await ctx.step("compose", () => `hello ${name}`);
+});
+```
+
+[Start the TypeScript quickstart →](tutorial-typescript.md)
+
+</Tab>
+
+<Tab value="Python">
+
+```python
+import fusee
+
+@fusee.workflow("greet")
+async def greet(ctx: fusee.Ctx, name: str) -> str:
+    return await ctx.step("compose", lambda: f"hello {name}")
+```
+
+[Start the Python quickstart →](tutorial-python.md)
+
+</Tab>
+
+<Tab value="Rust">
+
+```rust
+use fusee::{Ctx, Error, WorkflowRef};
+
+const GREET: WorkflowRef<String, String> = WorkflowRef::new("greet");
+
+async fn greet(ctx: Ctx, name: String) -> fusee::Result<String> {
+    ctx.step("compose", || async { Ok::<_, Error>(format!("hello {name}")) }).await
+}
+```
+
+[Start the Rust quickstart →](tutorial-rust.md)
+
+</Tab>
+
+</Tabs>
+
+Go and Java embed the same engine. Start with the [Go SDK](../bindings/go/README.md) or the [Java SDK](../bindings/java/README.md) for build instructions and a checkout workflow.
+
+## Where to go next
+
+- **[Core concepts](concepts.md)** — how workflows, runs, steps, and the journal fit together.
+- **[Examples](../examples/README.md)** — run a payment saga, an agent loop, a scheduled job, a human approval, or a cart in any of the five languages.
+- **[API reference](api/index.md)** — look up a method in your SDK or compare an operation across languages.
+- **[Deployment options](guides/running.md)** — choose between embedding the engine, running a server, and replicating the journal.

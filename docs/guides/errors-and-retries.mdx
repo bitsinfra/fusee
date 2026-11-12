@@ -1,0 +1,178 @@
+# Errors and retries
+
+A step's function talks to the world, and the world fails. This guide is
+about deciding, for each failure, whether to try again, give up, or undo.
+The reference is [errors](../errors.md); the codes and the failure envelope
+are there.
+
+## What is retried by default
+
+A step that throws is retried: three attempts, about 100 ms and then
+200 ms apart (each delay drawn between half of it and all of it, so many
+runs that fail together do not retry together). The delay taken is
+recorded, so a replay after a crash waits for the same time.
+
+<Tabs groupId="sdk" persist items={["TypeScript", "Python"]}>
+
+<Tab value="TypeScript">
+
+```ts
+const charge = await ctx.step("charge", (s) => payments.charge(order, { idempotencyKey: s.key }), {
+  retry: { attempts: 5, initial: "200ms", max: "1m", maxElapsed: "10m" },
+});
+```
+
+</Tab>
+
+<Tab value="Python">
+
+```python
+charge = await ctx.step("charge", lambda s: payments.charge(order, idempotency_key=s.key),
+                        retry=fusee.Retry(attempts=5, initial="200ms", max="1m", max_elapsed="10m"))
+```
+
+</Tab>
+
+</Tabs>
+
+Pass the step's key to the service as its idempotency key. A step's
+function can run more than once (a retry, or a crash between the call and
+its recording), and the key is how the service tells a repeat from a new
+request. `fusee.testing`'s `crash_everywhere` finds steps that forget it
+([testing your workflows](../testing-workflows.md)).
+
+## Failures that must not be retried
+
+A declined card stays declined. Mark it final and the step fails at once:
+
+<Tabs groupId="sdk" persist items={["TypeScript", "Python"]}>
+
+<Tab value="TypeScript">
+
+```ts
+class CardDeclined extends FatalError {}
+throw new CardDeclined("card declined", { code: "card_declined", details: { last4 } });
+```
+
+</Tab>
+
+<Tab value="Python">
+
+```python
+class CardDeclined(fusee.Fatal):
+    code = "card_declined"
+
+raise CardDeclined("card declined")
+```
+
+</Tab>
+
+</Tabs>
+
+In Rust, return `Failure::fatal("card declined").kind("CardDeclined").code("card_declined")`;
+in Go, `fusee.Fatal(err)`; in Java, throw a `FatalException`. Or keep the
+error as it is and say which types the policy does not retry:
+`nonRetryable: [CardDeclined]` (TypeScript), `non_retryable=(CardDeclined,)`
+(Python), `NonRetryable: []string{"CardDeclined"}` (Go),
+`.nonRetryable("CardDeclined")` (Java). `retryIf(failure, attempt)` decides
+case by case.
+
+## What the caller sees
+
+The failure travels as an envelope: its message, type, code and details
+reach the caller in any language. A step that failed for good raises
+`StepFailed` in the workflow, with the step's failure as its cause:
+
+<Tabs groupId="sdk" persist items={["TypeScript", "Python"]}>
+
+<Tab value="TypeScript">
+
+```ts
+try {
+  await ctx.step("charge", chargeCard);
+} catch (e) {
+  if (e instanceof StepError && e.cause.code === "card_declined") return { status: "declined" };
+  throw e;
+}
+```
+
+</Tab>
+
+<Tab value="Python">
+
+```python
+async def pay(ctx, order):
+    try:
+        await ctx.step("charge", charge_card)
+    except fusee.StepError as e:
+        if e.cause.code == "card_declined":
+            return {"status": "declined"}
+        raise
+```
+
+</Tab>
+
+</Tabs>
+
+A workflow that throws fails with `WorkflowFailed`, its failure as the
+cause; a child's failure reaches its parent as `ChildFailed`. Each wraps the
+one below, so the original type and code survive any number of levels,
+across languages: a Go workflow's `CardDeclined` is the TypeScript
+caller's `e.cause.cause.type`.
+
+## Timeouts
+
+`timeout` bounds one attempt; `heartbeatTimeout` fails an attempt that has
+not reported progress (`s.heartbeat(progress)`) for that long, so a long
+step can be cut short when it hangs rather than when it ends. Both are
+retried under the policy. A workflow's `timeout` bounds the whole run and
+ends it `TimedOut`.
+
+## Pausing instead of failing
+
+Some failures outlast any retry policy but not a fix: a bug, an expired
+credential, a service that is down for the afternoon. Pause the run when a
+step's retries run out, instead of failing it, and resume it once the cause
+is fixed. The run continues as if the step had succeeded the first time;
+its parent and callers keep waiting meanwhile.
+
+<Tabs groupId="sdk" persist items={["TypeScript", "Python"]}>
+
+<Tab value="TypeScript">
+
+```ts
+await ctx.step("charge", (s) => payments.charge(order, { idempotencyKey: s.key }), {
+  retry: { attempts: 5, onExhausted: "pause" },
+});
+// Once payments are back:
+await engine.run("order-1").resume();
+```
+
+</Tab>
+
+<Tab value="Python">
+
+```python
+await ctx.step("charge", lambda s: payments.charge(order, idempotency_key=s.key),
+               retry=fusee.Retry(attempts=5, on_exhausted="pause"))
+# Once payments are back:
+await engine.run("order-1").resume()
+```
+
+</Tab>
+
+</Tabs>
+
+`onExhausted: "pause"` on the engine makes it every step's default. Final
+failures still fail at once. Paused runs show as `paused` in listings and
+on the UI's Needs attention screen, and `fusee runs bulk resume --status
+paused` resumes them all; see [pausing when retries run
+out](../features.md#pausing-when-retries-run-out).
+
+## When retrying is not enough
+
+Retries cover a failure that goes away. For one that does not, undo what
+the run already did: see [sagas](sagas.mdx). For a step that must not run
+twice at all, make the service idempotent with the key; Fusee cannot make
+the outside world exactly-once by itself, only make the attempts and their
+order exact.
