@@ -37,7 +37,7 @@ libc = "0.2"
 hdrhistogram = "7.6"
 aes-gcm = "0.10.3"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
-chrono-tz = { version = "0.8.6", default-features = false }
+chrono-tz = { version = "0.10.4", default-features = false }
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
