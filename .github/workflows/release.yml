@@ -82,7 +82,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: native-${{ matrix.cli }}
           path: cli
@@ -97,7 +97,7 @@ jobs:
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.manylinux }}
           args: --release --locked --out dist
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: npm
           path: packages
@@ -167,7 +167,7 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           pattern: native-*
           path: artifacts
@@ -206,7 +206,7 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: npm
           path: packages
@@ -224,7 +224,7 @@ jobs:
     runs-on: ubuntu-24.04
     environment: pypi
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           pattern: wheel-*
           merge-multiple: true
@@ -238,7 +238,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           pattern: native-*
           path: artifacts
