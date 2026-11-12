@@ -28,7 +28,7 @@ jobs:
           FUSEE_VSR_FIRST=$((RANDOM * 100000)) FUSEE_VSR_SEEDS=1000 cargo test --release -p fusee-core vsr -- --nocapture 2>&1 | tee vsr.log
       - name: File an issue with the failing seed
         if: failure()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require("fs");
