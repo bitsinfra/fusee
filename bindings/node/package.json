@@ -1,0 +1,87 @@
+{
+  "name": "@bitsinfra/fusee",
+  "version": "1.0.1",
+  "description": "Durable execution at the speed of the disk, embedded in your Node.js or Bun process",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    },
+    "./ai": {
+      "types": "./dist/ai.d.ts",
+      "default": "./dist/ai.js"
+    },
+    "./ai/vercel": {
+      "types": "./dist/ai-vercel.d.ts",
+      "default": "./dist/ai-vercel.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
+    "./rich": {
+      "types": "./dist/rich.d.ts",
+      "default": "./dist/rich.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "bin"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "durable-execution",
+    "workflow",
+    "saga",
+    "journal",
+    "fsync"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bitsinfra/fusee"
+  },
+  "napi": {
+    "binaryName": "fusee",
+    "packageName": "fusee",
+    "targets": [
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl",
+      "aarch64-unknown-linux-musl",
+      "aarch64-apple-darwin",
+      "x86_64-apple-darwin"
+    ]
+  },
+  "optionalDependencies": {
+    "fusee-linux-x64-gnu": "1.0.1",
+    "fusee-linux-arm64-gnu": "1.0.1",
+    "fusee-linux-x64-musl": "1.0.1",
+    "fusee-linux-arm64-musl": "1.0.1",
+    "fusee-darwin-arm64": "1.0.1",
+    "fusee-darwin-x64": "1.0.1"
+  },
+  "scripts": {
+    "build:native": "cargo build --release -p fusee-node && node scripts/copy-native.mjs",
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "ai": "^7.0.170",
+    "typescript": "^6.0.0"
+  },
+  "bin": {
+    "fusee": "bin/fusee.cjs"
+  }
+}

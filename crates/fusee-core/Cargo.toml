@@ -1,0 +1,19 @@
+[package]
+name = "fusee-core"
+description = "Deterministic core of the Fusee durable execution engine: records, segments, journals and shard state with no I/O"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+crc32c.workspace = true
+rustc-hash.workspace = true
+
+[lints]
+workspace = true

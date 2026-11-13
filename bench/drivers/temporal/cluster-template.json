@@ -1,0 +1,86 @@
+{
+  "log": {
+    "stdout": true,
+    "level": "warn"
+  },
+  "persistence": {
+    "defaultStore": "main",
+    "visibilityStore": "visibility",
+    "numHistoryShards": 128,
+    "datastores": {
+      "main": {
+        "sql": {
+          "pluginName": "postgres12",
+          "databaseName": "temporal",
+          "connectAddr": "pg1:5432",
+          "connectProtocol": "tcp",
+          "user": "postgres",
+          "maxConns": 20,
+          "maxIdleConns": 20,
+          "maxConnLifetime": "1h"
+        }
+      },
+      "visibility": {
+        "sql": {
+          "pluginName": "postgres12",
+          "databaseName": "temporal_visibility",
+          "connectAddr": "pg1:5432",
+          "connectProtocol": "tcp",
+          "user": "postgres",
+          "maxConns": 20,
+          "maxIdleConns": 20,
+          "maxConnLifetime": "1h"
+        }
+      }
+    }
+  },
+  "global": {
+    "membership": {
+      "maxJoinDuration": "30s"
+    }
+  },
+  "services": {
+    "frontend": {
+      "rpc": {
+        "grpcPort": 7233,
+        "membershipPort": 6933
+      }
+    },
+    "history": {
+      "rpc": {
+        "grpcPort": 7234,
+        "membershipPort": 6934
+      }
+    },
+    "matching": {
+      "rpc": {
+        "grpcPort": 7235,
+        "membershipPort": 6935
+      }
+    },
+    "worker": {
+      "rpc": {
+        "grpcPort": 7239,
+        "membershipPort": 6939
+      }
+    }
+  },
+  "clusterMetadata": {
+    "enableGlobalNamespace": false,
+    "failoverVersionIncrement": 10,
+    "masterClusterName": "active",
+    "currentClusterName": "active",
+    "clusterInformation": {
+      "active": {
+        "enabled": true,
+        "initialFailoverVersion": 1,
+        "rpcName": "frontend",
+        "rpcAddress": "temporal1:7233"
+      }
+    }
+  },
+  "dynamicConfigClient": {
+    "filepath": "/config/dynamic.yaml",
+    "pollInterval": "10s"
+  }
+}

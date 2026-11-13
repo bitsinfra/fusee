@@ -1,0 +1,1 @@
+{ "type": "module", "private": true, "dependencies": { "absurd-sdk": "0.3.0" } }

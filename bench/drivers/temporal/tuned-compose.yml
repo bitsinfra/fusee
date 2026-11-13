@@ -1,0 +1,6 @@
+services:
+  temporal:
+    volumes:
+      - ./temporal/tuned.yaml:/etc/temporal/config/dynamicconfig/fusee-tuned.yaml:ro
+    environment:
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/fusee-tuned.yaml
