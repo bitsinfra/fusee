@@ -1,0 +1,15 @@
+package obelisk:types@6.0.0;
+interface function {
+    record function { interface-name: string, function-name: string }
+}
+interface execution {
+    record execution-id { id: string }
+}
+interface join-set {
+    resource join-set;
+}
+interface time {
+    variant duration { milliseconds(u64), seconds(u64), minutes(u32), hours(u32), days(u32) }
+    record datetime { seconds: u64, nanoseconds: u32 }
+    variant schedule-at { now, at(datetime), in(duration) }
+}

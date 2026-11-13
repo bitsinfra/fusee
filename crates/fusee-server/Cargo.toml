@@ -1,0 +1,33 @@
+[package]
+name = "fusee-server"
+description = "Fusee server mode: the server holds the log, workflow code runs in the application"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+fusee.workspace = true
+fusee-core.workspace = true
+crc32c.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }
+serde_json.workspace = true
+serde.workspace = true
+sha2 = "0.10.9"
+# TLS 1.3 only, ring provider; no default features (no aws-lc, TLS 1.2 or logging).
+rustls = { version = "0.23.46", default-features = false, features = ["std", "ring"] }
+ring = "0.17.14"
+# Same-host shared memory (mappings, futexes, descriptor passing) and the
+# replication clock that counts suspended time (CLOCK_BOOTTIME), for leases.
+libc.workspace = true
+
+[dev-dependencies]
+rcgen = { version = "0.14.7", default-features = false, features = ["ring", "pem"] }
+
+[lints]
+workspace = true

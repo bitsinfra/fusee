@@ -1,0 +1,187 @@
+{
+  "$comment": "The one model of Fusee's interface. Every SDK spells these operations in its own case (camel: TypeScript, Java; snake: Python, Rust; Pascal: Go) with the same argument order and option set. api/check.py checks the SDKs against it; api/gen.py writes docs/api.md from it. Edit this file first, then the SDKs.",
+  "version": 1,
+  "case": {
+    "typescript": "camel",
+    "python": "snake",
+    "rust": "snake",
+    "go": "pascal",
+    "java": "camel"
+  },
+  "durations": "A duration is a number of milliseconds or a string: an integer or decimal followed by ms, s, m, h or d ('500ms', '10s', '1.5h'). Rust takes std::time::Duration; Go time.Duration; Java java.time.Duration.",
+  "definitions": [
+    {
+      "name": "workflow",
+      "args": ["name", "fn"],
+      "options": ["version", "input", "output", "timeout", "concurrency"],
+      "returns": "Workflow<I, O>",
+      "doc": "A workflow type: a plain value, apart from any engine. Pass it to Engine.open({ workflows }), engine.start, ctx.child. The options form is workflow(name, options, fn)."
+    },
+    {
+      "name": "signal",
+      "args": ["name"],
+      "options": ["schema"],
+      "returns": "Signal<T>",
+      "doc": "A signal's name and payload type. A plain string works wherever a definition does."
+    },
+    {
+      "name": "query",
+      "args": ["name"],
+      "options": ["schema"],
+      "returns": "Query<A, R>",
+      "doc": "A query's name, argument and result types."
+    },
+    {
+      "name": "update",
+      "args": ["name"],
+      "options": ["schema"],
+      "returns": "Update<A, R>",
+      "doc": "An update's name, argument and result types."
+    },
+    {
+      "name": "object",
+      "args": ["name", "handlers"],
+      "options": ["version"],
+      "returns": "ObjectType",
+      "doc": "A keyed object type. Handlers are exclusive unless wrapped in shared()."
+    },
+    {
+      "name": "shared",
+      "args": ["handler"],
+      "returns": "SharedHandler",
+      "doc": "Marks an object handler as shared: it reads state and runs beside other shared calls."
+    }
+  ],
+  "client": {
+    "$comment": "Engine (embedded) and Client (remote, and the HTTP client) implement this one interface. Every method is async.",
+    "operations": [
+      {"name": "start", "args": ["workflow", "id", "input"], "options": ["idPolicy", "timeout", "version", "delay", "at", "attributes"], "returns": "Run<O>"},
+      {"name": "run", "args": ["id"], "returns": "Run<O>", "sync": true, "doc": "A handle; makes no call."},
+      {"name": "signalWithStart", "args": ["workflow", "id", "input", "signal", "value"], "options": ["idPolicy", "timeout", "version"], "returns": "Run<O>"},
+      {"name": "updateWithStart", "args": ["workflow", "id", "input", "update", "arg"], "options": ["idPolicy", "timeout", "version", "updateId"], "returns": "[Run<O>, R]"},
+      {"name": "object", "args": ["type", "key"], "returns": "ObjectRef", "sync": true},
+      {"name": "schedule", "args": ["name", "spec", "workflow", "input"], "returns": "Schedule", "doc": "Creates or updates the schedule. spec: { cron, every, timezone, overlap, catchupWindow, jitter, paused }."},
+      {"name": "schedules", "args": [], "returns": "Schedules", "sync": true, "doc": "schedules.get(name), schedules.list()."},
+      {"name": "list", "args": [], "options": ["type", "status", "version", "startedAfter", "startedBefore", "attributes", "limit", "pageSize"], "returns": "AsyncIterable<RunSummary>"},
+      {"name": "complete", "args": ["token", "value"], "returns": "void"},
+      {"name": "fail", "args": ["token", "failure"], "returns": "void"},
+      {"name": "debounce", "args": ["workflow", "key", "input"], "options": ["window", "maxWait", "dedupWindow", "eventId"], "returns": "Run<O>"},
+      {"name": "batch", "args": ["workflow", "key", "event"], "options": ["maxEvents", "maxWait", "dedupWindow", "eventId"], "returns": "Run<O>"},
+      {"name": "close", "args": [], "returns": "void"}
+    ]
+  },
+  "engine": {
+    "$comment": "Embedded engine only, beyond the client interface.",
+    "operations": [
+      {"name": "open", "static": true, "args": [], "options": ["dir", "url", "durability", "workflows", "objects", "shards", "workers", "module", "profile", "serializer", "codec", "keepHistory", "recordStacks", "onExhausted", "retention", "telemetry", "logger"], "returns": "Engine", "doc": "No arguments: FUSEE_DIR, else FUSEE_URL (a client), else ./fusee-data."},
+      {"name": "limit", "args": ["name", "spec"], "returns": "void", "doc": "spec: { concurrent, perSecond }."},
+      {"name": "limits", "args": [], "returns": "LimitUsage[]"},
+      {"name": "serve", "args": [], "options": ["port", "host", "token", "ui"], "returns": "Server", "doc": "Serves the HTTP API (and the UI) from its own thread."},
+      {"name": "on", "args": ["event", "handler"], "returns": "void", "sync": true, "doc": "Events: stuck, waitingForCode."},
+      {"name": "metrics", "args": [], "returns": "Metrics"}
+    ]
+  },
+  "run": {
+    "operations": [
+      {"name": "signal", "args": ["signal", "value"], "returns": "void"},
+      {"name": "query", "args": ["query", "arg"], "returns": "R"},
+      {"name": "update", "args": ["update", "arg"], "options": ["id"], "returns": "R"},
+      {"name": "result", "args": [], "returns": "O"},
+      {"name": "status", "args": [], "returns": "RunSummary"},
+      {"name": "describe", "args": [], "returns": "RunDetail", "doc": "The summary and the journal as a typed union of records."},
+      {"name": "cancel", "args": [], "options": ["reason"], "returns": "void"},
+      {"name": "terminate", "args": [], "options": ["reason"], "returns": "void"},
+      {"name": "reset", "args": ["beforeStep"], "options": ["reapplySignals", "version"], "returns": "void"},
+      {"name": "retry", "args": [], "returns": "void", "doc": "Resets a failed run to before its failed step."},
+      {"name": "resume", "args": [], "returns": "void", "doc": "Runs a paused step again with a fresh set of attempts."},
+      {"name": "stream", "args": ["name"], "options": ["from", "wait"], "returns": "StreamReader<T>", "sync": true}
+    ]
+  },
+  "objectRef": {
+    "operations": [
+      {"name": "call", "args": ["handler", "arg"], "options": ["id"], "returns": "R"},
+      {"name": "send", "args": ["handler", "arg"], "options": ["id"], "returns": "void"},
+      {"name": "state", "args": [], "returns": "Record<string, unknown>"},
+      {"name": "describe", "args": [], "returns": "ObjectDetail"},
+      {"name": "delete", "args": [], "returns": "void"}
+    ]
+  },
+  "schedule": {
+    "operations": [
+      {"name": "pause", "args": [], "returns": "void"},
+      {"name": "resume", "args": [], "returns": "void"},
+      {"name": "trigger", "args": [], "returns": "void"},
+      {"name": "backfill", "args": ["from", "to"], "returns": "void"},
+      {"name": "describe", "args": [], "returns": "ScheduleDetail"},
+      {"name": "delete", "args": [], "returns": "void"}
+    ]
+  },
+  "ctx": {
+    "$comment": "The workflow context. Code between ctx calls must be deterministic.",
+    "properties": ["workflowId", "workflowType", "version", "runId", "log"],
+    "operations": [
+      {"name": "step", "args": ["name", "fn"], "options": ["retry", "timeout", "heartbeatTimeout", "readOnly", "limit", "priority", "fairnessKey", "fairnessWeight", "output", "thread"], "returns": "Serialized<T>", "doc": "fn may take the step context s."},
+      {"name": "sleep", "args": ["name", "duration"], "returns": "void"},
+      {"name": "sleepUntil", "args": ["name", "at"], "returns": "void"},
+      {"name": "waitFor", "args": ["signal"], "options": ["timeout"], "returns": "T | undefined"},
+      {"name": "child", "args": ["workflow", "id", "input"], "options": ["parentClose", "timeout"], "returns": "O"},
+      {"name": "startChild", "args": ["workflow", "id", "input"], "options": ["parentClose", "timeout"], "returns": "void"},
+      {"name": "signalWorkflow", "args": ["id", "signal", "value"], "returns": "void"},
+      {"name": "cancelWorkflow", "args": ["id"], "options": ["reason"], "returns": "void"},
+      {"name": "object", "args": ["type", "key"], "returns": "ObjectCall"},
+      {"name": "onQuery", "args": ["query", "handler"], "returns": "void"},
+      {"name": "onUpdate", "args": ["update", "handler"], "options": ["validate"], "returns": "void"},
+      {"name": "awaitCompletion", "args": ["name", "send"], "options": ["retry", "timeout"], "returns": "T", "doc": "send(cb) receives { token, url }."},
+      {"name": "compensate", "args": ["name", "fn"], "options": ["retry", "timeout"], "returns": "void", "doc": "Registers a step that runs, newest first, if the workflow fails or is cancelled."},
+      {"name": "continueAsNew", "args": ["input"], "options": ["version"], "returns": "never"},
+      {"name": "patched", "args": ["id"], "returns": "boolean"},
+      {"name": "deprecatePatch", "args": ["id"], "returns": "void"},
+      {"name": "setAttributes", "args": ["attributes"], "returns": "void"},
+      {"name": "stream", "args": ["name"], "returns": "StreamWriter"},
+      {"name": "now", "args": [], "returns": "number"},
+      {"name": "random", "args": [], "returns": "number"},
+      {"name": "uuid", "args": [], "returns": "string"},
+      {"name": "all", "args": ["operations"], "returns": "T[]"},
+      {"name": "race", "args": ["operations"], "returns": "T"}
+    ]
+  },
+  "stepCtx": {
+    "$comment": "The step function's one optional argument. Built only when the function declares a parameter.",
+    "properties": ["key", "attempt", "signal", "log", "name"],
+    "operations": [
+      {"name": "heartbeat", "args": ["progress"], "returns": "void"},
+      {"name": "progress", "args": [], "returns": "T | undefined"},
+      {"name": "stream", "args": ["name"], "returns": "StreamWriter"}
+    ]
+  },
+  "options": {
+    "retry": {"fields": ["attempts", "initial", "factor", "max", "jitter", "maxElapsed", "nonRetryable", "retryIf", "onExhausted"], "defaults": {"attempts": 3, "initial": "100ms", "factor": 2, "max": "10s", "jitter": true, "onExhausted": "fail"}},
+    "idPolicy": {"fields": ["running", "finished"], "values": {"running": ["fail", "use-existing", "terminate-existing"], "finished": ["allow", "allow-if-failed", "refuse", "use-existing"]}, "defaults": {"running": "fail", "finished": "allow"}},
+    "parentClose": {"values": ["terminate", "request-cancel", "abandon"], "default": "terminate"},
+    "connection": {"fields": ["address", "tls", "tokenFile", "maxShards", "sharedMemory"], "doc": "tls: { ca, cert, key }. The URL form is for FUSEE_URL only."}
+  },
+  "errors": [
+    {"code": "NotFound", "retryable": false, "fields": ["id"]},
+    {"code": "AlreadyExists", "retryable": false, "fields": ["id", "runId"]},
+    {"code": "UnknownWorkflow", "retryable": false, "fields": ["type", "registered"]},
+    {"code": "StepFailed", "retryable": false, "fields": ["step", "attempts", "workflowId", "cause"]},
+    {"code": "WorkflowFailed", "retryable": false, "fields": ["workflowId", "cause"]},
+    {"code": "ChildFailed", "retryable": false, "fields": ["workflowId", "cause"]},
+    {"code": "Cancelled", "retryable": true, "fields": ["reason"]},
+    {"code": "TimedOut", "retryable": true, "fields": []},
+    {"code": "Terminated", "retryable": false, "fields": ["reason"]},
+    {"code": "Determinism", "retryable": false, "fields": ["workflowId", "step"]},
+    {"code": "Rejected", "retryable": false, "fields": ["reason"]},
+    {"code": "Codec", "retryable": false, "fields": ["step", "path"]},
+    {"code": "Connection", "retryable": true, "fields": ["address"]},
+    {"code": "Io", "retryable": true, "fields": ["path"]},
+    {"code": "Busy", "retryable": true, "fields": []},
+    {"code": "Closed", "retryable": false, "fields": []}
+  ],
+  "errorClasses": {
+    "$comment": "Class names by code, where a language names classes. Every class has code, docs and the fields above; FatalError marks a failure final.",
+    "typescript": {"base": "FuseeError", "StepFailed": "StepError", "WorkflowFailed": "WorkflowError", "ChildFailed": "ChildError", "Cancelled": "CancelledError", "TimedOut": "TimeoutError", "Terminated": "TerminatedError", "Determinism": "DeterminismError", "Rejected": "RejectedError", "Codec": "CodecError", "Connection": "ConnectionError", "NotFound": "NotFoundError", "AlreadyExists": "AlreadyExistsError", "UnknownWorkflow": "UnknownWorkflowError", "Io": "IoError", "Busy": "BusyError", "Closed": "ClosedError", "fatal": "FatalError"},
+    "python": {"base": "FuseeError", "StepFailed": "StepError", "WorkflowFailed": "WorkflowError", "ChildFailed": "ChildError", "Cancelled": "CancelledError", "TimedOut": "TimeoutError", "Terminated": "TerminatedError", "Determinism": "DeterminismError", "Rejected": "RejectedError", "Codec": "CodecError", "Connection": "ConnectionError", "NotFound": "NotFoundError", "AlreadyExists": "AlreadyExistsError", "UnknownWorkflow": "UnknownWorkflowError", "Io": "IoError", "Busy": "BusyError", "Closed": "ClosedError", "fatal": "Fatal"},
+    "rust": {"base": "Error", "fatal": "Failure::fatal"}
+  }
+}

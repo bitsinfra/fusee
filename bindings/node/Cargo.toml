@@ -1,0 +1,30 @@
+[package]
+name = "fusee-node"
+description = "Node.js and Bun bindings for Fusee (napi-rs)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+path = "native/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+# `testing`: the test kit's virtual clock and journal import (memory engines only).
+fusee = { workspace = true, features = ["testing"] }
+fusee-server.workspace = true
+fusee-core.workspace = true
+serde_json.workspace = true
+libc.workspace = true
+tokio = { workspace = true, features = ["rt"] }
+napi = { version = "3.4", default-features = false, features = ["napi8", "tokio_rt"] }
+napi-derive = "3.3"
+
+[build-dependencies]
+napi-build = "2.2"

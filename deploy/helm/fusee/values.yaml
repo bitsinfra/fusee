@@ -1,0 +1,30 @@
+image:
+  repository: ghcr.io/bitsinfra/fusee
+  tag: "1.0.2"
+  pullPolicy: IfNotPresent
+
+# 1: one server. 3 (or 5): a replicated group; each member keeps a copy and
+# a majority must be up (docs/replication.md).
+members: 1
+shards: 0          # 0: the server's default (one per core)
+
+# Workers and clients prove this token (HMAC challenge). Leave empty to have
+# the chart generate one into a Secret (read it with kubectl get secret).
+token: ""
+
+ports:
+  protocol: 7600   # workers and clients
+  http: 7601       # HTTP API, web UI, /metrics (Bearer token)
+  replication: 7700
+
+storage:
+  size: 20Gi
+  # A class whose volumes honour flushes (local NVMe or a block volume).
+  className: ""
+
+resources:
+  requests: { cpu: "1", memory: 1Gi }
+  limits: { memory: 2Gi }
+
+# Adds Prometheus scrape annotations for /metrics.
+metricsAnnotations: true

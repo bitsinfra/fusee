@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fusee.name" . }}
+  labels: {{- include "fusee.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "fusee.labels" . | nindent 4 }}
+  ports:
+    - { name: protocol, port: {{ .Values.ports.protocol }}, targetPort: protocol }
+    - { name: http, port: {{ .Values.ports.http }}, targetPort: http }
+---
+# Stable names for the members (replication and the StatefulSet).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fusee.name" . }}-members
+  labels: {{- include "fusee.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector: {{- include "fusee.labels" . | nindent 4 }}
+  ports:
+    - { name: replication, port: {{ .Values.ports.replication }}, targetPort: replication }

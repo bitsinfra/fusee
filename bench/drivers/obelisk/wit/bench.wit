@@ -1,0 +1,24 @@
+package fusee:bench;
+
+interface activity {
+    crash-effect: func(run: string, index: u32, value: u32) -> result<u32>;
+    noop: func(value: u32) -> result<tuple<u32, u64, u64>>;
+    service-increment: func(value: u32, delay-ms: u32) -> result<tuple<u32, u64, u64>>;
+}
+interface workflow {
+    recovery: func(run: string, value: u32) -> result<u32>;
+    sleeper: func(slot: u32, deadline-ms: u64) -> result<u32>;
+    await-signal: func(challenge: string) -> result<string>;
+    chain: func(count: u32) -> result<list<tuple<u32, u64, u64>>>;
+    matrix: func(kind: string, count: u32) -> result<list<tuple<u32, u64, u64>>>;
+}
+world bench-activity {
+    export activity;
+}
+world bench-workflow {
+    import activity;
+    import obelisk:log/log@1.0.0;
+    import obelisk:workflow/workflow-support@7.0.0;
+    import obelisk:workflow/workflow-dynamic-support@7.0.0;
+    export workflow;
+}

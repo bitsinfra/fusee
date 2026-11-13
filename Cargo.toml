@@ -1,0 +1,62 @@
+[workspace]
+members = [
+  "crates/fusee-core",
+  "crates/fusee",
+  "crates/fusee-sim",
+  "crates/fusee-cli",
+  "crates/fusee-server",
+  "bindings/node",
+  "bindings/python",
+  "bindings/c",
+  "bench/harness",
+]
+resolver = "3"
+
+[workspace.package]
+version = "1.0.2"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/bitsinfra/fusee"
+homepage = "https://github.com/bitsinfra/fusee"
+authors = ["The Fusee authors"]
+keywords = ["durable-execution", "workflow", "journal", "log", "fsync"]
+categories = ["asynchronous", "database-implementations"]
+
+[workspace.dependencies]
+fusee-core = { path = "crates/fusee-core", version = "1.0.2" }
+fusee = { path = "crates/fusee", version = "1.0.2" }
+fusee-sim = { path = "crates/fusee-sim", version = "1.0.2" }
+fusee-server = { path = "crates/fusee-server", version = "1.0.2" }
+crc32c = "0.6.9"
+rustc-hash = "2.1"
+tokio = { version = "1.54", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+libc = "0.2"
+hdrhistogram = "7.6"
+aes-gcm = "0.10.3"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+chrono-tz = { version = "0.8.6", default-features = false }
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+missing_debug_implementations = "allow"
+
+[workspace.lints.clippy]
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+# Protocol and binding entry points take many plain parameters on purpose.
+too_many_arguments = "allow"
+type_complexity = "allow"
+# `next()` on decoders and machines is not an iterator.
+should_implement_trait = "allow"
+
+[profile.release]
+debug = 1
+codegen-units = 4
+lto = "thin"
+
+[profile.bench]
+inherits = "release"

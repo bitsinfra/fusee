@@ -1,0 +1,42 @@
+name: continuous seeds
+# Runs new random simulation seeds continuously and files an issue with the
+# failing seed, which reproduces the run exactly.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  seeds:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Engine simulation, 200k random seeds
+        id: sim
+        run: |
+          set -o pipefail
+          cargo run --release -p fusee-sim --bin fusee-sim -- --random 200000 2>&1 | tee sim.log
+      - name: Replication simulation, random range
+        id: vsr
+        run: |
+          set -o pipefail
+          FUSEE_VSR_FIRST=$((RANDOM * 100000)) FUSEE_VSR_SEEDS=1000 cargo test --release -p fusee-core vsr -- --nocapture 2>&1 | tee vsr.log
+      - name: File an issue with the failing seed
+        if: failure()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require("fs");
+            const read = (f) => (fs.existsSync(f) ? fs.readFileSync(f, "utf8") : "");
+            const log = (read("sim.log") + read("vsr.log")).split("\n").filter((l) => /seed \d+/.test(l)).slice(0, 20).join("\n");
+            await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title: `Simulation seed failed (${new Date().toISOString().slice(0, 10)})`,
+              body: "A continuous simulation run found a failing seed. Reproduce with `fusee-sim --seed <seed>` or `FUSEE_VSR_FIRST=<seed> FUSEE_VSR_SEEDS=1 cargo test --release -p fusee-core vsr`.\n\n```\n" + log + "\n```\n\nRun: " + `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              labels: ["simulation", "correctness"],
+            });

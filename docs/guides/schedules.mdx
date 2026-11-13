@@ -1,0 +1,97 @@
+# Schedules and timers
+
+Three tools, from the smallest:
+
+- **A sleep** inside a run: `await ctx.sleep("cool-off", "10m")`. Durable:
+  a crash or a deploy during the ten minutes changes nothing.
+- **A delayed start**: `engine.start(report, "report-7", input, { delay: "1h" })`
+  (or `at: date`). The run exists under its ID from now; `result()` waits
+  through the delay.
+- **A schedule**: a run on every cron time or interval, until you delete
+  it.
+
+## A schedule
+
+<Tabs groupId="sdk" persist items={["TypeScript", "Python", "Rust"]}>
+
+<Tab value="TypeScript">
+
+```ts
+const s = await engine.schedule(
+  "nightly-report",
+  { cron: "0 2 * * *", timezone: "Europe/London", overlap: "skip" },
+  report,
+  { recipients: ["ops@example.com"] },
+);
+await s.pause(); await s.resume(); await s.trigger();
+await s.backfill(new Date("2026-11-01"), new Date("2026-11-07"));
+await s.delete();
+```
+
+</Tab>
+
+<Tab value="Python">
+
+```python
+s = await engine.schedule("nightly-report",
+                          {"cron": "0 2 * * *", "timezone": "Europe/London", "overlap": "skip"},
+                          report, {"recipients": ["ops@example.com"]})
+```
+
+</Tab>
+
+<Tab value="Rust">
+
+```rust
+let spec = ScheduleSpec {
+    cron: Some("0 2 * * *".into()),
+    timezone: "Europe/London".into(),
+    overlap: Overlap::Skip,
+    workflow: "report".into(),
+    input: serde_json::json!({ "recipients": ["ops@example.com"] }),
+    ..Default::default()
+};
+let schedule = engine.schedule("nightly-report", spec).await?;
+```
+
+</Tab>
+
+</Tabs>
+
+`fusee schedules ls`, `fusee schedules pause nightly-report` and the UI's
+Schedules screen do the same from outside.
+
+## What it guarantees
+
+- **Each time runs once.** A run's ID is the schedule's name and its time
+  (`nightly-report@2026-11-09T02:00:00Z`), and a start attaches to a run
+  that has the ID. Two processes, a crash during the start, a backfill
+  over a time that already ran: still one run per time.
+- **Missed times catch up.** After downtime, the times missed within
+  `catchupWindow` (default a year) start, oldest first. Set it to an hour
+  for a job where only the latest matters.
+- **Overlap is a choice.** `skip` (the default) skips a time while the
+  previous run still runs; `buffer-one` keeps one waiting; `allow-all`
+  starts every time; `cancel-other` cancels the running one first.
+- **Time zones.** A cron in `Europe/London` fires at 02:00 local time
+  across daylight-saving changes; a time that does not exist that night is
+  skipped, one that happens twice runs once.
+- **Jitter** spreads starts of many schedules over a window (recorded, so
+  the same on replay).
+
+A schedule is itself a workflow (`fusee.schedule/<name>`) running the same
+native code in every SDK, so it has no scheduler process to deploy and
+keeps working through restarts and failovers.
+
+## Choosing
+
+| You want | Use |
+| --- | --- |
+| a pause in a process | `ctx.sleep` |
+| one run later | a delayed start |
+| a run every hour, or at 02:00 | a schedule |
+| the latest of a burst of events, after a quiet period | `engine.debounce` |
+| events gathered into batches | `engine.batch` |
+
+The [scheduled job example](../../examples/README.md) runs in five
+languages.

@@ -1,0 +1,14 @@
+{
+  // A strict consumer that checks libraries too: the published declarations
+  // must compile here (test/types.test.mjs).
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": false,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "files": ["consumer.ts"]
+}

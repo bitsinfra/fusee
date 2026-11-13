@@ -1,0 +1,8 @@
+app_name = "fusee-bench"
+
+[[outbound_http.allowed_host]]
+pattern = "http://127.0.0.1:29780"
+methods = ["GET"]
+
+[public_env]
+FUSEE_GENERATION = { optional = true }

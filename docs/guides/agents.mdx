@@ -1,0 +1,86 @@
+# Agents
+
+An agent is a loop: ask a model, run the tool it asks for, give it the
+result, repeat. Each model call and each tool call is a step, so a crash
+in the middle of a long session resumes at the step it was on, and the
+model is not asked again for answers it already gave.
+
+```ts
+const agent = workflow("agent", async (ctx, question) => {
+  const history = [{ role: "user", content: question }];
+  for (let turn = 0; turn < 20; turn++) {
+    const reply = await ctx.step(`model-${turn}`, () => model.complete(history));
+    if (!reply.toolCall) return reply.text;
+    const result = await ctx.step(`tool-${turn}-${reply.toolCall.name}`, (s) =>
+      tools[reply.toolCall.name](reply.toolCall.args, { idempotencyKey: s.key }),
+    );
+    history.push(reply.message, { role: "tool", content: result });
+  }
+  throw new FatalError("no answer after 20 turns");
+});
+```
+
+Step names carry the turn, so the journal reads as the conversation did.
+Tool calls that change the world take the step's key, like any step.
+
+An agent already written with the Vercel AI SDK, Pydantic AI or the OpenAI
+Agents SDK becomes durable without rewriting its loop: see [agent
+patterns](agent-patterns.md), which also covers sessions, tool approvals,
+interrupting and the other shapes agents take.
+
+## Streaming tokens
+
+A user watching an answer wants tokens as they come. `modelCall` makes the
+model call a step whose tokens are a stream, readable from anywhere while
+the step runs:
+
+<Tabs groupId="sdk" persist items={["TypeScript", "Python"]}>
+
+<Tab value="TypeScript">
+
+```ts
+import { modelCall } from "@bitsinfra/fusee/ai";
+
+const text = await modelCall(ctx, `model-${turn}`, async function* (resume) {
+  // `resume`: the tokens an earlier attempt already streamed. Ask the model
+  // to continue from there (an assistant prefill) instead of starting over.
+  yield* model.stream(history, { prefill: resume });
+});
+
+// A web handler, in any process: follow the stream as it grows.
+for await (const token of engine.run(id).stream(`model-${turn}`)) res.write(token);
+```
+
+</Tab>
+
+<Tab value="Python">
+
+```python
+from fusee.ai import model_call
+
+text = await model_call(ctx, f"model-{turn}", lambda resume: model.stream(history, prefill=resume))
+```
+
+</Tab>
+
+</Tabs>
+
+Readers see only tokens that are durable, so nothing they show is taken
+back after a crash; a reader that reconnects with its offset continues
+exactly where it was. A retried call keeps what was streamed and appends
+after it. The [streams reference](../features.md#streams) has the rules.
+
+## Long sessions
+
+- **Context windows.** A run's journal grows by two records per turn.
+  After a few hundred turns, summarize the history and continue as new
+  with the summary: `return ctx.continueAsNew({ summary })`.
+- **Human in the loop.** A tool that needs approval is a wait: see
+  [waiting for people](human-approval.mdx).
+- **Rate limits.** Put model calls under a limit, `limit: "openai"` on the
+  step, sized with `engine.limit("openai", { perSecond: 50 })`; steps over
+  it wait their turn instead of failing.
+- **Cost and time caps.** A workflow `timeout`, or a step counter in the
+  loop as above.
+
+The [agent loop example](../../examples/README.md) runs in five languages.
