@@ -1,0 +1,25 @@
+/target
+**/node_modules
+**/*.node
+**/__pycache__
+**/*.so
+**/*.pyd
+.DS_Store
+*.fck.tmp
+/bindings/node/dist
+/bindings/python/.venv
+/bindings/node/fusee.*.node
+/bindings/node/bench-data
+/bindings/python/python/fusee/_native*.so
+/fuzz/target
+/fuzz/Cargo.lock
+# The CLI copied into the packages at release (scripts/rehearse-release.sh, release.yml)
+bindings/python/python/fusee/bin/
+bindings/node/npm/
+
+/docs/.next/
+/docs/.source/
+/docs/.content/
+/docs/out/
+/docs/next-env.d.ts
+/docs/*.tsbuildinfo

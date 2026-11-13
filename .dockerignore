@@ -1,0 +1,10 @@
+.*
+target
+**/target
+**/node_modules
+**/__pycache__
+*.tgz
+bindings/node/dist
+bindings/node/*.node
+bindings/python/.venv
+bindings/python/python/fusee/*.so

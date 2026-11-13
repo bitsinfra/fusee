@@ -1,0 +1,4 @@
+api.listening_addr = "127.0.0.1:5005"
+webui.enabled = false
+external.enabled = false
+database.sqlite.pragma = { synchronous = "FULL" }

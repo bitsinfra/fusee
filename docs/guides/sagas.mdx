@@ -1,0 +1,79 @@
+# Sagas: undoing what a run did
+
+A checkout reserves stock, charges a card and books shipping. If the
+charge fails after the reservation, the reservation must be released. A
+saga is a workflow that registers, for each step that changes the world,
+the step that undoes it.
+
+<Tabs groupId="sdk" persist items={["TypeScript", "Python"]}>
+
+<Tab value="TypeScript">
+
+```ts
+const checkout = workflow("checkout", async (ctx, order) => {
+  const hold = await ctx.step("reserve", (s) => inventory.reserve(order.sku, s.key));
+  ctx.compensate("release", () => inventory.release(hold));
+  const charge = await ctx.step("charge", (s) => payments.charge(order.cents, s.key));
+  ctx.compensate("refund", () => payments.refund(charge));
+  await ctx.step("ship", (s) => shipping.book(order, s.key));
+  return charge;
+});
+```
+
+</Tab>
+
+<Tab value="Python">
+
+```python
+@fusee.workflow("checkout")
+async def checkout(ctx, order):
+    hold = await ctx.step("reserve", lambda s: inventory.reserve(order["sku"], s.key))
+    ctx.compensate("release", lambda: inventory.release(hold))
+    charge = await ctx.step("charge", lambda s: payments.charge(order["cents"], s.key))
+    ctx.compensate("refund", lambda: payments.refund(charge))
+    await ctx.step("ship", lambda s: shipping.book(order, s.key))
+    return charge
+```
+
+</Tab>
+
+</Tabs>
+
+If the workflow fails or is cancelled, the registered compensations run,
+newest first, each as a step: `refund`, then `release`. Then the run ends
+with its failure. A compensation is a step like any other, so it is
+recorded, retried under its policy and, after a crash, not run again once
+done. One that fails after its retries is logged and the others still run.
+
+## Rules that keep a saga correct
+
+- **Register the undo after the step succeeds.** A step that failed did
+  nothing to undo (if it could have half-done something, make its undo
+  safe to run on nothing, and register it before).
+- **Give every step and every undo the step's key** as the service's
+  idempotency key. A crash can make either run twice.
+- **Undo is not rollback.** The charge happened; the refund is a second
+  event the customer may see. Order steps so the ones hardest to undo come
+  last.
+- **Cancel is a request.** `run.cancel(reason)` reaches the code as
+  `Cancelled` at its next operation, and compensations run. `terminate`
+  ends the run at once: nothing runs after it, not even compensation.
+
+## Without `compensate`
+
+The same thing by hand, when the undo depends on how far the run got:
+
+```ts
+try {
+  await ctx.step("ship", (s) => shipping.book(order, s.key));
+} catch (e) {
+  await ctx.step("refund", () => payments.refund(charge));
+  throw e;
+}
+```
+
+The [payment saga example](../../examples/README.md) runs in five
+languages. Testing a saga: `crash_everywhere` crashes the run once at each
+step boundary and requires the same result and the same outside effects,
+so a missing idempotency key shows up as a test failure
+([testing your workflows](../testing-workflows.md)).

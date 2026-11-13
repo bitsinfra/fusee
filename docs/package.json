@@ -1,0 +1,30 @@
+{
+  "name": "fusee-docs",
+  "private": true,
+  "devDependencies": {
+    "typedoc": "0.28.20",
+    "typescript": "6.0.3",
+    "tailwindcss": "^4",
+    "@tailwindcss/postcss": "^4",
+    "@types/mdx": "^2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/node": "^24"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node tooling/redirects.mjs",
+    "preview": "python3 -m http.server --bind 127.0.0.1 --directory out 3000"
+  },
+  "dependencies": {
+    "fumadocs-core": "16.19.0",
+    "fumadocs-mdx": "15.6.0",
+    "fumadocs-ui": "16.19.0",
+    "next": "16.4.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "unist-util-visit": "5.1.0",
+    "zod": "^4"
+  }
+}

@@ -1,0 +1,20 @@
+[[activity_wasm]]
+name = "noop"
+location = "build/noop_activity.wasm"
+max_retries = 0
+env_vars = [{ key = "FUSEE_GENERATION", optional = true }]
+
+[[activity_wasm.allowed_host]]
+pattern = "http://127.0.0.1:29780"
+methods = ["GET"]
+
+[[workflow_wasm]]
+name = "chain"
+location = "build/chain_workflow.wasm"
+logs_store_min_level = "info"
+
+[[activity_stub]]
+name = "external-signal"
+ffqn = "fusee:bench/signals.receive"
+params = [{ name = "challenge", type = "string" }]
+return_type = "result<string>"

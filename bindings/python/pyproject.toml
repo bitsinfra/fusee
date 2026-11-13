@@ -1,0 +1,37 @@
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+
+[project]
+name = "fusee"
+version = "1.0.2"
+description = "Durable execution at the speed of the disk, embedded in your Python process"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+requires-python = ">=3.9"
+keywords = ["durable-execution", "workflow", "saga", "journal", "fsync"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Rust",
+  "Framework :: AsyncIO",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+]
+
+[project.optional-dependencies]
+# The agent framework adapters, fusee.ai.pydantic and fusee.ai.openai.
+pydantic-ai = ["pydantic-ai-slim>=2.68"]
+openai-agents = ["openai-agents>=0.24"]
+
+[project.scripts]
+# The CLI in the wheel (fusee/bin/fusee, added at release): `uvx fusee dev`.
+fusee = "fusee._cli:main"
+
+[project.urls]
+Repository = "https://github.com/bitsinfra/fusee"
+
+[tool.maturin]
+python-source = "python"
+module-name = "fusee._native"
+manifest-path = "Cargo.toml"
+features = ["pyo3/extension-module"]

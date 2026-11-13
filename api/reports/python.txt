@@ -1,0 +1,308 @@
+# fusee
+class AlreadyExistsError(FuseeError)
+    def __init__(self, message: 'str', *, id: 'Optional[str]' = None, run_id: 'Optional[int]' = None)
+class BusyError(FuseeError)
+class CancelledError(FuseeError)
+    def __init__(self, reason: 'str' = 'cancelled')
+class ChildError(FuseeError)
+    def __init__(self, workflow_id: 'str', cause: 'Failure')
+class Client()
+    def __init__(self, transport, address: 'str' = '')
+    async def batch(self, workflow: 'Any', key: 'str', event: 'Any' = None, *, max_events: 'Optional[int]' = None, max_wait: 'Any' = None, dedup_window: 'Any' = None, event_id: 'str' = '') -> 'Run[Any]'
+    async def call(self, method: 'str', args: 'dict') -> 'Any'
+    async def close(self) -> 'None'
+    async def complete(self, token: 'str', value: 'Any' = None) -> 'None'
+    @classmethod connect(cls, address: 'Optional[str]' = None, *, tls: 'Optional[dict]' = None, token_file: 'Optional[str]' = None) -> "'Client'"
+    async def debounce(self, workflow: 'Any', key: 'str', input: 'Any' = None, *, window: 'Any', max_wait: 'Any' = None, dedup_window: 'Any' = None, event_id: 'str' = '') -> 'Run[Any]'
+    async def fail(self, token: 'str', failure: 'Any') -> 'None'
+    def list(self, *, type: 'Any' = None, status: 'Optional[str]' = None, started_after: 'Any' = None, started_before: 'Any' = None, attributes: 'Optional[dict]' = None, limit: 'int' = 1000) -> 'AsyncIterator[RunSummary]'
+    def object(self, type: 'Any', key: 'str') -> 'ObjectRef'
+    def run(self, id: 'str', workflow: 'Optional[Workflow[Any, O]]' = None) -> 'Run[O]'
+    async def schedule(self, name: 'str', spec: 'Any', workflow: 'Any', input: 'Any' = None) -> 'Schedule'
+    schedules: property
+    async def signal_with_start(self, workflow: 'Any', id: 'str', input: 'Any', signal: 'Any', value: 'Any' = None, *, id_policy: 'Any' = None, timeout: 'Any' = None, version: 'Optional[int]' = None) -> 'Any'
+    async def start(self, workflow: 'Any', id: 'str', input: 'Any' = None, *, id_policy: 'Any' = None, timeout: 'Any' = None, version: 'Optional[int]' = None, delay: 'Any' = None, at: 'Any' = None) -> 'Any'
+    async def update_with_start(self, workflow: 'Any', id: 'str', input: 'Any', update: 'Any', arg: 'Any' = None, *, update_id: 'str' = '', id_policy: 'Any' = None, timeout: 'Any' = None, version: 'Optional[int]' = None) -> 'tuple'
+class ClosedError(FuseeError)
+    def __init__(self, message: 'str' = 'engine closed')
+class CodecError(FuseeError)
+    def __init__(self, message: 'str', *, step: 'Optional[str]' = None, path: 'Optional[str]' = None)
+class Completion()
+    def __init__(self, token: 'str', url: 'Optional[str]' = None) -> None
+class Concurrency()
+    def __init__(self, limit: 'int', key: 'Optional[Callable[[Any], str]]' = None) -> None
+class ConnectionError(FuseeError)
+    def __init__(self, message: 'str', *, address: 'Optional[str]' = None)
+class Ctx()
+    def __init__(self, x: 'RunExec')
+    def all(self, items: 'list') -> 'Any'
+    def await_completion(self, name: 'str', send: 'Callable[[Completion], Any]', *, retry: 'Optional[Retry]' = None, timeout=None, output: 'Any' = None) -> 'Any'
+    def cancel_workflow(self, id: 'str', *, reason: 'str' = 'cancelled') -> 'None'
+    def child(self, workflow: 'Any', id: 'str', input: 'Any' = None, *, parent_close: 'str' = 'terminate', timeout=None) -> 'Any'
+    def compensate(self, name: 'str', fn: 'Callable[..., Any]') -> 'None'
+    def continue_as_new(self, input: 'Any' = None, *, version: 'int' = 0) -> 'Any'
+    def deprecate_patch(self, id: 'str') -> 'None'
+    def journal_size(self) -> 'int'
+    log: property
+    def now(self) -> 'int'
+    def object(self, type: 'Any', key: 'str') -> "'ObjectCall'"
+    def on_query(self, query: 'Any', handler: 'Callable[[Any], Any]') -> 'None'
+    def on_update(self, update: 'Any', handler: 'Callable[[Any], Any]', *, validate: 'Optional[Callable]' = None) -> 'None'
+    def patched(self, id: 'str') -> 'bool'
+    def race(self, items: 'list') -> 'Any'
+    def random(self) -> 'float'
+    run_id: property
+    def set_attributes(self, attributes: 'dict') -> 'None'
+    def signal_workflow(self, id: 'str', signal: 'Any', value: 'Any' = None) -> 'None'
+    def sleep(self, name: 'str', duration) -> 'Any'
+    def sleep_until(self, name: 'str', at) -> 'Any'
+    def start_child(self, workflow: 'Any', id: 'str', input: 'Any' = None, *, parent_close: 'str' = 'terminate', timeout=None) -> 'None'
+    def step(self, name: 'str', fn: 'Callable[..., Any]', *, retry: 'Optional[Retry]' = None, timeout=None, heartbeat_timeout=None, limit: 'Optional[str]' = None, read_only: 'bool' = False, priority: 'Optional[int]' = None, fairness_key: 'Optional[str]' = None, fairness_weight: 'Optional[int]' = None, output: 'Any' = None, thread: 'Optional[bool]' = None) -> 'Any'
+    def stream(self, name: 'str') -> "'StreamWriter'"
+    def uuid(self) -> 'str'
+    version: property
+    def wait_for(self, signal: 'Any', *, timeout=None) -> 'Any'
+    workflow_id: property
+    workflow_type: property
+DOCS_BASE: str
+class DeterminismError(FuseeError)
+    def __init__(self, message: 'str', *, workflow_id: 'Optional[str]' = None)
+class Engine(CodeHost)
+    def __init__(self, loop: 'asyncio.AbstractEventLoop', **opts)
+    async def batch(self, workflow: 'Any', key: 'str', event: 'Any' = None, *, max_events: 'Optional[int]' = None, max_wait: 'Any' = None, dedup_window: 'Any' = None, event_id: 'str' = '') -> 'Run[Any]'
+    async def close(self) -> 'None'
+    async def complete(self, token: 'str', value: 'Any' = None) -> 'None'
+    async def debounce(self, workflow: 'Any', key: 'str', input: 'Any' = None, *, window: 'Any', max_wait: 'Any' = None, dedup_window: 'Any' = None, event_id: 'str' = '') -> 'Run[Any]'
+    def export_journal(self, id: 'str') -> 'Optional[bytes]'
+    async def fail(self, token: 'str', failure: 'Any') -> 'None'
+    def limit(self, name: 'str', *, concurrent: 'int' = 0, per_second: 'float' = 0.0) -> 'None'
+    def limit_usage(self, name: 'str') -> 'tuple'
+    def limits(self) -> 'builtins.list[LimitInfo]'
+    def list(self, *, type: 'Any' = None, status: 'Optional[str]' = None, started_after: 'Any' = None, started_before: 'Any' = None, attributes: 'Optional[dict]' = None, limit: 'int' = 1000) -> 'AsyncIterator[RunSummary]'
+    async def metrics(self) -> 'dict'
+    def object(self, type: 'Any', key: 'str') -> 'ObjectRef'
+    def on(self, event: 'str', handler: 'Callable[..., Any]') -> 'None'
+    @classmethod open(cls, dir: 'Optional[str]' = None, *, workflows: 'Iterable[Any]' = (), objects: 'Iterable[ObjectType]' = (), durability: 'Optional[str]' = None, address: 'Optional[str]' = None, profile: 'Optional[str]' = None, replica_id: 'Optional[int]' = None, replica_metrics: 'Optional[ReplicaMetrics]' = None, peers: 'Optional[builtins.list[str]]' = None, shards: 'Optional[int]' = None, retention=None, park_after=None, checkpoint_interval=None, flush: 'Optional[str]' = None, segment_bytes: 'Optional[int]' = None, keep_history: 'Optional[bool]' = None, archive_history: 'bool' = False, record_stacks: 'bool' = True, on_exhausted: 'str' = 'fail', sync_steps: 'str' = 'inline', codec: 'Optional[list]' = None, telemetry: 'Any' = None, inline_flush: 'Optional[bool]' = None, http: 'Optional[str]' = None) -> "'Engine'"
+    def register(self, *definitions: 'Any') -> 'None'
+    def run(self, id: 'str', workflow: 'Optional[Workflow[Any, O]]' = None) -> 'Run[O]'
+    async def schedule(self, name: 'str', spec: 'Any', workflow: 'Any', input: 'Any' = None) -> 'Schedule'
+    schedules: property
+    def serve(self, addr: 'str' = '127.0.0.1:7601', *, token: 'Optional[str]' = None, insecure: 'bool' = False) -> 'str'
+    def shard_metrics(self) -> 'builtins.list[dict]'
+    async def signal_with_start(self, workflow: 'Any', id: 'str', input: 'Any', signal: 'Any', value: 'Any' = None, *, id_policy: 'Any' = None, timeout: 'Any' = None, version: 'Optional[int]' = None) -> 'Any'
+    async def start(self, workflow: 'Any', id: 'str', input: 'Any' = None, *, id_policy: 'Any' = None, timeout: 'Any' = None, version: 'Optional[int]' = None, delay: 'Any' = None, at: 'Any' = None) -> 'Any'
+    async def update_with_start(self, workflow: 'Any', id: 'str', input: 'Any', update: 'Any', arg: 'Any' = None, *, update_id: 'str' = '', id_policy: 'Any' = None, timeout: 'Any' = None, version: 'Optional[int]' = None) -> 'tuple'
+class Failure()
+    def __init__(self, message: 'str', type: 'Optional[str]' = None, code: 'Optional[str]' = None, details: 'Any' = None, retryable: 'Optional[bool]' = None, stack: 'Optional[str]' = None, cause: "Optional['Failure']" = None) -> None
+    @classmethod decode(cls, payload: 'Any') -> "'Failure'"
+    def encode(self) -> 'bytes'
+    @classmethod from_json(cls, v: 'Any') -> "'Failure'"
+    def has_type(self, name: 'str') -> 'bool'
+    root: property
+    def to_json(self) -> 'dict'
+class Fatal(Exception)
+    def __init__(self, message: 'str' = '', *, code: 'Optional[str]' = None, details: 'Any' = None)
+class FuseeError(Exception)
+    def __init__(self, message: 'str', *, code: 'Optional[str]' = None, cause: 'Optional[Failure]' = None)
+    docs: property
+class IdPolicy()
+    def __init__(self, running: 'str' = 'fail', finished: 'str' = 'allow') -> None
+    def bits(self) -> 'int'
+class InvocationHandler()
+    def __init__(self, address: 'str', *, workflows=(), objects=(), register: "Optional[Callable[['Engine'], Any]]" = None, secret=None, **engine_options)
+    async def invoke(self, headers: 'Optional[dict]', body: 'bytes') -> 'tuple'
+    def lambda_handler(self, event: 'dict', context=None) -> 'dict'
+class IoError(FuseeError)
+class LimitInfo()
+    def __init__(self, name: 'str', concurrent: 'int', per_second: 'float', in_use: 'int', waiting: 'int') -> None
+class NotFoundError(FuseeError)
+    def __init__(self, message: 'str', *, id: 'Optional[str]' = None)
+class ObjectCall()
+    def __init__(self, x: 'RunExec', type: 'str', key: 'str')
+    def call(self, handler: 'str', arg: 'Any' = None) -> 'Any'
+    def send(self, handler: 'str', arg: 'Any' = None) -> 'None'
+class ObjectCtx(Ctx)
+    def __init__(self, x: 'RunExec', exclusive: 'bool')
+    object_key: property
+class ObjectRef()
+    def __init__(self, ops: 'Any', type: 'str', key: 'str')
+    async def call(self, handler: 'str', arg: 'Any' = None, *, id: 'str' = '') -> 'Any'
+    async def clear_state(self, field: 'Optional[str]' = None, *, if_version: 'Optional[str]' = None) -> 'dict'
+    async def delete(self) -> 'None'
+    async def describe(self) -> 'Optional[RunDetail]'
+    async def edit_state(self, edit: 'dict', *, if_version: 'Optional[str]' = None, id: 'str' = '') -> 'dict'
+    id: property
+    async def patch_state(self, ops: 'list', *, if_version: 'Optional[str]' = None) -> 'dict'
+    async def send(self, handler: 'str', arg: 'Any' = None, *, id: 'str' = '') -> 'None'
+    async def set_state(self, field: 'str', value: 'Any', *, if_version: 'Optional[str]' = None) -> 'dict'
+    async def state(self) -> 'dict'
+class ObjectState()
+    def __init__(self, x: 'RunExec', exclusive: 'bool')
+    def clear(self, key: 'str') -> 'None'
+    def clear_all(self) -> 'None'
+    def get(self, key: 'str', default: 'Any' = None) -> 'Any'
+    def keys(self) -> 'list'
+    def set(self, key: 'str', value: 'Any') -> 'None'
+class ObjectType()
+    def __init__(self, name: 'str', handlers: 'Optional[dict]' = None, *, version: 'int' = 1)
+    def exclusive(self, fn=None, *, name: 'Optional[str]' = None)
+    def shared(self, fn=None, *, name: 'Optional[str]' = None)
+class Query(Generic)
+    def __init__(self, name: 'str', *, arg: 'Any' = None, result: 'Any' = None)
+class RejectedError(FuseeError)
+    def __init__(self, message: 'str')
+class ReplayReport()
+    def __init__(self, workflow_id: 'str', workflow_type: 'str', ok: 'bool' = False, error: 'Optional[str]' = None, finished: 'bool' = False, file: 'Optional[str]' = None) -> None
+class Replayer(CodeHost)
+    def __init__(self, workflows: 'Iterable[Workflow]' = (), *, codec: 'Optional[list]' = None)
+    async def replay(self, file: 'bytes') -> 'ReplayReport'
+    async def replay_dir(self, dir: 'str') -> 'list'
+    async def replay_file(self, path: 'str') -> 'ReplayReport'
+class ReplicaMetrics()
+    def __init__(self)
+    def snapshot(self)
+class Retry()
+    def __init__(self, attempts: 'int' = 3, initial: 'Union[int, float, str]' = 100, factor: 'float' = 2.0, max: 'Union[int, float, str]' = '10s', jitter: 'bool' = True, max_elapsed: 'Union[None, int, float, str]' = None, non_retryable: 'tuple' = (), retry_if: 'Optional[Callable[[Failure, int], bool]]' = None, on_exhausted: 'Optional[str]' = None) -> None
+    def allows(self, f: 'Failure', attempt: 'int') -> 'bool'
+    def delay_ms(self, failed_attempt: 'int') -> 'float'
+    def retryable(self, f: 'Failure', attempt: 'int') -> 'bool'
+class Run(Generic)
+    def __init__(self, ops: 'Any', id: 'str', workflow: 'Optional[Workflow]' = None)
+    async def cancel(self, reason: 'str' = 'cancelled') -> 'None'
+    async def describe(self) -> 'RunDetail'
+    async def query(self, query: 'Any', arg: 'Any' = None) -> 'Any'
+    async def reset(self, before_step: 'str', *, reapply_signals: 'bool' = True, version: 'int' = 0) -> 'None'
+    async def result(self) -> 'O'
+    async def resume(self) -> 'None'
+    async def retry(self) -> 'None'
+    async def signal(self, signal: 'Any', value: 'Any' = None) -> 'None'
+    async def started(self) -> 'None'
+    async def status(self) -> 'RunSummary'
+    def stream(self, name: 'str', *, from_: 'int' = 0, wait=None) -> 'StreamReader'
+    async def terminate(self, reason: 'str' = 'terminated') -> 'None'
+    async def update(self, update: 'Any', arg: 'Any' = None, *, id: 'str' = '') -> 'Any'
+class RunDetail()
+    def __init__(self, summary: 'RunSummary', journal: 'list', object: 'Optional[dict]' = None) -> None
+    failed_step: property
+    steps: property
+class RunSummary()
+    def __init__(self, id: 'str', type: 'str', version: 'int', status: 'str', started_ms: 'int', finished_ms: 'Optional[int]' = None, error: 'Optional[str]' = None, run_id: 'int' = 0, shard: 'int' = 0, attributes: 'dict' = <factory>, object: 'bool' = False) -> None
+    finished: property
+    @classmethod from_json(cls, r: 'dict') -> "'RunSummary'"
+SIGNATURE_HEADER: str
+class Schedule()
+    def __init__(self, ops: 'Any', name: 'str')
+    async def backfill(self, from_: 'Any', to: 'Any') -> 'None'
+    async def delete(self) -> 'None'
+    async def describe(self) -> 'dict'
+    async def pause(self) -> 'None'
+    async def resume(self) -> 'None'
+    async def trigger(self) -> 'None'
+class ScheduleSpec()
+    def __init__(self, cron: 'Optional[str]' = None, every: 'Any' = None, offset: 'Any' = None, timezone: 'str' = 'UTC', overlap: 'str' = 'skip', jitter: 'Any' = None, catchup_window: 'Any' = None, paused: 'bool' = False) -> None
+    @classmethod of(cls, spec: 'Any') -> "'ScheduleSpec'"
+    def wire(self, workflow: 'str', input: 'Any') -> 'dict'
+class Schedules()
+    def __init__(self, ops: 'Any')
+    def get(self, name: 'str') -> 'Schedule'
+    async def list(self) -> 'builtins.list'
+class Signal(Generic)
+    def __init__(self, name: 'str', type: 'Any' = None)
+    def decode(self, v: 'Any') -> 'Any'
+class StepCtx()
+    def __init__(self, x: 'RunExec', seq: 'int', name: 'str', attempt: 'int')
+    cancelled: property
+    def heartbeat(self, progress: 'Any' = None) -> 'None'
+    key: property
+    log: property
+    def progress(self) -> 'Any'
+    def stream(self, name: 'str') -> "'StreamWriter'"
+    workflow_id: property
+class StepError(FuseeError)
+    def __init__(self, step: 'str', cause: 'Failure', *, workflow_id: 'Optional[str]' = None, attempts: 'Optional[int]' = None)
+class StreamReader()
+    def __init__(self, read: 'Callable[[Optional[int], int, int], Any]', start: 'int' = 0, wait=None, run: 'Optional[int]' = None)
+class StreamWriter()
+    def __init__(self, x: 'RunExec', name: 'str', step: 'Optional[int]', recorded: 'int', closed: 'bool', seq: 'Callable[[], Optional[int]]')
+    def append(self, value: 'Any') -> 'None'
+    def close(self) -> 'None'
+    def recorded(self) -> 'list'
+class Telemetry()
+    def __init__(self, tracer=None, meter=None, use_span=None, status=None, traceparent=None, remote=None, span_in=None)
+class TerminatedError(FuseeError)
+    def __init__(self, reason: 'str' = 'terminated')
+class TimeoutError(FuseeError)
+    def __init__(self, message: 'str' = 'timed out')
+class UnknownWorkflowError(FuseeError)
+    def __init__(self, message: 'str', *, type: 'Optional[str]' = None, registered: 'Optional[list]' = None)
+class Update(Generic)
+    def __init__(self, name: 'str', *, arg: 'Any' = None, result: 'Any' = None)
+class Workflow(Generic)
+    def __init__(self, name: 'str', fn: 'Callable[..., Awaitable[O]]', *, version: 'int' = 1, timeout=None, input: 'Any' = None, output: 'Any' = None, concurrency: "Optional['Concurrency']" = None)
+    def check_input(self, v: 'Any') -> 'None'
+    def decode_input(self, v: 'Any') -> 'Any'
+    def decode_output(self, v: 'Any') -> 'Any'
+class WorkflowError(FuseeError)
+    def __init__(self, cause: 'Failure', *, workflow_id: 'Optional[str]' = None)
+def aes_gcm(keys: dict) -> list
+def as_requester(by: 'str')
+def connection_url(address: 'str', *, tls: 'Optional[dict]' = None, token_file: 'Optional[str]' = None, max_shards: 'Optional[int]' = None, shared_memory: 'bool' = False) -> 'str'
+def duration_ms(d: 'Union[None, int, float, str, _dt.timedelta]') -> 'Optional[float]'
+def invocation_handler(address: 'str', *, workflows=(), objects=(), register: "Optional[Callable[['Engine'], Any]]" = None, secret=None, **engine_options) -> 'InvocationHandler'
+def object(name: 'str', handlers: 'Optional[dict]' = None, *, version: 'int' = 1) -> 'ObjectType'
+def open_telemetry() -> 'Telemetry'
+def query(name: 'str', *, arg: 'Any' = None, result: 'Any' = None) -> 'Query[Any, Any]'
+def shared(fn: 'Callable[..., Any]') -> 'Any'
+def signal(name: 'str', type: 'Optional[typing.Type[T]]' = None) -> 'Signal[T]'
+def update(name: 'str', *, arg: 'Any' = None, result: 'Any' = None) -> 'Update[Any, Any]'
+def verify_signature(secret, header: 'str', body: 'bytes', now_ms: 'Optional[int]' = None) -> 'Optional[str]'
+def workflow(name: 'Any' = None, fn: 'Any' = None, /, *, version: 'int' = 1, timeout: 'Any' = None, input: 'Any' = None, output: 'Any' = None, concurrency: 'Optional[Concurrency]' = None) -> 'Any'
+
+# fusee.ai
+async def model_call(ctx: 'Ctx', name: 'str', call: 'Callable[[str], AsyncIterator[str]]', *, stream: 'Optional[str]' = None, **step_options: 'Any') -> 'str'
+
+# fusee.sync
+class Client()
+    def __init__(self, loop: '_Loop', client: 'AsyncClient')
+    def close(self) -> 'None'
+    def complete(self, token: 'str', value: 'Any' = None) -> 'None'
+    @classmethod connect(cls, address: 'Optional[str]' = None, **options: 'Any') -> "'Client'"
+    def fail(self, token: 'str', failure: 'Any') -> 'None'
+    def list(self, **filters: 'Any') -> 'list'
+    def run(self, id: 'str', workflow: 'Any' = None) -> 'Run[Any]'
+    def signal_with_start(self, workflow: 'Any', id: 'str', input: 'Any', signal: 'Any', value: 'Any' = None, **options: 'Any') -> 'Run[Any]'
+    def start(self, workflow: 'Any', id: 'str', input: 'Any' = None, **options: 'Any') -> 'Run[Any]'
+    def update_with_start(self, workflow: 'Any', id: 'str', input: 'Any', update: 'Any', arg: 'Any' = None, **options: 'Any') -> 'tuple'
+class Run(Generic)
+    def __init__(self, loop: '_Loop', run: 'AsyncRun')
+    def cancel(self, reason: 'str' = 'cancelled') -> 'None'
+    def describe(self) -> 'RunDetail'
+    id: property
+    def query(self, query: 'Any', arg: 'Any' = None) -> 'Any'
+    def result(self, timeout: 'Optional[float]' = None) -> 'O'
+    def resume(self) -> 'None'
+    def retry(self) -> 'None'
+    def signal(self, signal: 'Any', value: 'Any' = None) -> 'None'
+    def status(self) -> 'RunSummary'
+    def terminate(self, reason: 'str' = 'terminated') -> 'None'
+    def update(self, update: 'Any', arg: 'Any' = None, *, id: 'str' = '') -> 'Any'
+
+# fusee.testing
+class Case()
+    def __init__(self, workflows: 'list', workflow: 'Any', id: 'str', input: 'Any' = None, effects: 'Callable[[], Any]' = <function Case.<lambda>>) -> None
+    def effects()
+class TestEngine()
+    def __init__(self, engine: 'Engine', workflows: 'list', objects: 'list', shards: 'int', options: 'dict')
+    async def advance(self, duration: 'Any') -> 'None'
+    async def check(self) -> 'None'
+    async def close(self) -> 'None'
+    async def crash(self, *, cut: 'Optional[tuple]' = None) -> 'None'
+    def mock_step(self, workflow: 'Any', step: 'str', fn: 'Callable[[int], Any]') -> 'None'
+    def now_ms(self) -> 'int'
+    @classmethod open(cls, *, workflows: 'Iterable[Any]' = (), objects: 'Iterable[Any]' = (), shards: 'int' = 1, **options: 'Any') -> "'TestEngine'"
+    async def result(self, id: 'str', workflow: 'Any' = None) -> 'Any'
+    def run(self, id: 'str', workflow: 'Any' = None) -> 'Any'
+    async def snapshot(self, id: 'str') -> 'list'
+    async def start(self, workflow: 'Any', id: 'str', input: 'Any' = None, **options: 'Any') -> 'Any'
+    async def steps(self, id: 'str') -> 'list'
+async def crash_everywhere(build: 'Callable[[], Case]') -> 'None'

@@ -1,0 +1,61 @@
+[package]
+name = "fusee"
+description = "Embeddable durable execution at the speed of the disk: workflows whose steps are durable within microseconds of fdatasync"
+readme = "../../README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+# The web UI's files, served by `fusee::http` (about 250 KB of script and
+# style, 150 KB of fonts in the binary).
+# `io-uring` (Linux only; nothing elsewhere): the shared log's owner thread
+# writes through a ring.
+default = ["ui", "io-uring"]
+ui = []
+# `fusee::testing`: the test kit (virtual time for `memory` engines, step
+# mocks, crash and crash_everywhere). Enable it from dev-dependencies; builds
+# without it carry none of its hooks.
+testing = []
+opentelemetry = ["dep:opentelemetry"]
+# Linux: the shared log's owner thread, and per-shard logs' optional
+# `FlushMethod::IoUring` (linked write + fdatasync), through io_uring.
+io-uring = ["dep:io-uring"]
+# Continuous backup to S3-compatible object storage (SigV4, HTTPS through rustls).
+s3 = ["dep:sha2", "dep:rustls"]
+
+[dependencies]
+opentelemetry = { version = "0.33", optional = true, default-features = false, features = ["metrics", "trace"] }
+redb = "2.6.4"
+fusee-core.workspace = true
+rustc-hash.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+libc.workspace = true
+crc32c.workspace = true
+tokio = { workspace = true, features = ["rt", "sync", "time", "net", "io-util", "macros"] }
+aes-gcm.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+sha2 = { version = "0.10.9", optional = true }
+# TLS 1.3 only, ring provider, as fusee-server uses it.
+rustls = { version = "0.23.46", optional = true, default-features = false, features = ["std", "ring"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+io-uring = { version = "0.7", optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+
+[[test]]
+name = "testing"
+required-features = ["testing"]
+
+[lints]
+workspace = true

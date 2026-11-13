@@ -1,0 +1,50 @@
+# Services for single-host driver runs. Host ports bind to loopback.
+services:
+  postgres:
+    image: postgres:17.6
+    environment:
+      POSTGRES_PASSWORD: bench
+    command: ["postgres", "-c", "synchronous_commit=on", "-c", "max_connections=500"]
+    ports: ["127.0.0.1:5432:5432"]
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/10-bench-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  temporal:
+    image: temporalio/auto-setup:1.28.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PWD: bench
+      POSTGRES_SEEDS: postgres
+    ports: ["127.0.0.1:7233:7233"]
+  restate:
+    image: docker.restate.dev/restatedev/restate:1.6.0
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    ports: ["127.0.0.1:8080:8080", "127.0.0.1:9070:9070"]
+  hatchet:
+    image: ghcr.io/hatchet-dev/hatchet/hatchet-lite:v0.114.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:bench@postgres:5432/hatchet
+      SERVER_URL: http://localhost:8888
+      SERVER_AUTH_COOKIE_DOMAIN: localhost
+      SERVER_AUTH_COOKIE_INSECURE: "t"
+      SERVER_GRPC_INSECURE: "t"
+      SERVER_GRPC_BIND_ADDRESS: 0.0.0.0
+      SERVER_GRPC_BROADCAST_ADDRESS: localhost:7077
+      SERVER_AUTH_SET_EMAIL_VERIFIED: "t"
+    volumes:
+      - hatchet-config:/config
+    ports: ["127.0.0.1:8888:8888", "127.0.0.1:7077:7070", "127.0.0.1:8081:8081"]
+volumes:
+  hatchet-config:
