@@ -164,7 +164,7 @@ jobs:
       - name: mvn test
         working-directory: bindings/java
         run: mvn -B -q test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: fusee-jni-${{ matrix.platform }}
           path: bindings/java/target/classes/dev/fusee/native/${{ matrix.platform }}
