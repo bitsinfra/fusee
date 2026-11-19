@@ -108,7 +108,7 @@ jobs:
         if: "!contains(matrix.npm, 'musl')"
         with:
           node-version: 24
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         if: "!contains(matrix.npm, 'musl')"
         with:
           python-version: "3.13"
