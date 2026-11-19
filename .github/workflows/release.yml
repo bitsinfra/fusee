@@ -15,7 +15,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || vars.FUSEE_PUBLIC_RELEASE_ENABLED == 'true'
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Verify the tag against the configured release signers
@@ -40,7 +40,7 @@ jobs:
           - { os: macos-15-intel, target: x86_64-apple-darwin, npm: darwin-x64 }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         if: "!contains(matrix.target, 'musl')"
         with:
@@ -84,7 +84,7 @@ jobs:
           - { os: macos-15-intel, target: x86_64, cli: darwin-x64, npm: darwin-x64 }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v6
         with:
           name: native-${{ matrix.cli }}
@@ -137,7 +137,7 @@ jobs:
     runs-on: ubuntu-24.04
     environment: crates.io
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth
@@ -153,7 +153,7 @@ jobs:
     needs: verify-tag
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo package --locked -p fusee-core -p fusee -p fusee-server -p fusee-sim -p fusee-cli
       - uses: actions/upload-artifact@v5
@@ -165,7 +165,7 @@ jobs:
     needs: [native]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -204,7 +204,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -237,7 +237,7 @@ jobs:
       contents: write
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v6
         with:
           pattern: native-*
@@ -275,7 +275,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - id: image
         name: Resolve the Helm image name and version
         run: echo "tag=ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
